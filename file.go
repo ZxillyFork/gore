@@ -20,7 +20,6 @@ package gore
 import (
 	"bytes"
 	"debug/dwarf"
-	"debug/gosym"
 	"encoding/binary"
 	"errors"
 	"fmt"
@@ -29,6 +28,8 @@ import (
 	"path"
 	"sort"
 	"sync"
+
+	"github.com/ZxillyFork/gosym"
 
 	macho2 "github.com/blacktop/go-macho"
 	"github.com/blacktop/go-macho/pkg/fixupchains"
@@ -317,6 +318,7 @@ func (f *GoFile) enumPackages() error {
 					Offset:      n.Entry,
 					End:         n.End,
 					PackageName: n.PackageName(),
+					Func:        &n,
 				},
 				Receiver: n.ReceiverName(),
 			}
@@ -328,6 +330,7 @@ func (f *GoFile) enumPackages() error {
 				Offset:      n.Entry,
 				End:         n.End,
 				PackageName: n.PackageName(),
+				Func:        &n,
 			}
 			p.Functions = append(p.Functions, f)
 		}

@@ -1,8 +1,9 @@
-module github.com/goretk/gore
+module github.com/ZxillyFork/gore
 
 go 1.21
 
 require (
+	github.com/ZxillyFork/gosym v0.0.0-20240502221713-b6e6623d24a9
 	github.com/blacktop/go-macho v1.1.232
 	github.com/go-git/go-git/v5 v5.11.0
 	github.com/stretchr/testify v1.8.4
