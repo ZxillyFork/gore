@@ -22,11 +22,12 @@ import (
 	"debug/elf"
 	"errors"
 	"fmt"
+	"golang.org/x/exp/mmap"
 	"os"
 )
 
 func openELF(fp string) (*elfFile, error) {
-	osFile, err := os.Open(fp)
+	osFile, err := mmap.Open(fp)
 	if err != nil {
 		return nil, fmt.Errorf("error when opening the ELF file: %w", err)
 	}
@@ -35,7 +36,7 @@ func openELF(fp string) (*elfFile, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error when parsing the ELF file: %w", err)
 	}
-	return &elfFile{file: f, osFile: osFile, symtab: newSymbolTableOnce()}, nil
+	return &elfFile{file: f, symtab: newSymbolTableOnce()}, nil
 }
 
 var _ fileHandler = (*elfFile)(nil)

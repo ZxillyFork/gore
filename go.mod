@@ -7,7 +7,7 @@ require (
 	github.com/blacktop/go-macho v1.1.232
 	github.com/go-git/go-git/v5 v5.11.0
 	github.com/stretchr/testify v1.8.4
-	golang.org/x/arch v0.7.0
+	golang.org/x/arch v0.8.0
 )
 
 require (

@@ -23,6 +23,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"golang.org/x/exp/mmap"
 	"os"
 	"slices"
 	"sort"
@@ -38,7 +39,7 @@ func openPE(fp string) (peF *peFile, err error) {
 		}
 	}()
 
-	osFile, err := os.Open(fp)
+	osFile, err := mmap.Open(fp)
 	if err != nil {
 		err = fmt.Errorf("error when opening the file: %w", err)
 		return
@@ -62,7 +63,7 @@ func openPE(fp string) (peF *peFile, err error) {
 		return
 	}
 
-	peF = &peFile{file: f, osFile: osFile, imageBase: imageBase, symtab: newSymbolTableOnce()}
+	peF = &peFile{file: f, imageBase: imageBase, symtab: newSymbolTableOnce()}
 	return
 }
 
