@@ -55,7 +55,7 @@ func Open(filePath string) (*GoFile, error) {
 
 	buf := make([]byte, maxMagicBufLen)
 	n, err := f.ReadAt(buf, 0)
-	_ = f.Close()
+	defer f.Close()
 	if err != nil {
 		return nil, err
 	}
