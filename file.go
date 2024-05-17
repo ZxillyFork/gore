@@ -94,7 +94,7 @@ func Open(filePath string) (*GoFile, error) {
 	}
 
 	// Try to extract build information.
-	if bi, err := gofile.extractBuildInfo(); err == nil {
+	if bi, err := gofile.extractBuildInfo(f); err == nil {
 		// This error is a minor failure; it just means we don't have
 		// this information.
 		// So if fails, we just ignore it.

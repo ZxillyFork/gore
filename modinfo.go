@@ -21,6 +21,7 @@ import (
 	"debug/buildinfo"
 	"errors"
 	"fmt"
+	"io"
 	"runtime/debug"
 )
 
@@ -38,8 +39,8 @@ type BuildInfo struct {
 	ModInfo *debug.BuildInfo
 }
 
-func (f *GoFile) extractBuildInfo() (*BuildInfo, error) {
-	info, err := buildinfo.Read(f.fh.getFile())
+func (f *GoFile) extractBuildInfo(ra io.ReaderAt) (*BuildInfo, error) {
+	info, err := buildinfo.Read(ra)
 	if err != nil {
 		return nil, fmt.Errorf("error when extracting build information: %w", err)
 	}
