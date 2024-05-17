@@ -23,6 +23,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"golang.org/x/exp/mmap"
 	"io"
 	"os"
 	"path"
@@ -47,18 +48,13 @@ var (
 
 // Open opens a file and returns a handler to the file.
 func Open(filePath string) (*GoFile, error) {
-	f, err := os.Open(filePath)
-	if err != nil {
-		return nil, err
-	}
-
-	_, err = f.Seek(0, io.SeekStart)
+	f, err := mmap.Open(filePath)
 	if err != nil {
 		return nil, err
 	}
 
 	buf := make([]byte, maxMagicBufLen)
-	n, err := f.Read(buf)
+	n, err := f.ReadAt(buf, 0)
 	_ = f.Close()
 	if err != nil {
 		return nil, err
