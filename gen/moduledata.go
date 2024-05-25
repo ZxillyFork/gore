@@ -20,9 +20,9 @@ package main
 import (
 	"bytes"
 	"fmt"
-	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/ZxillyFork/gore/extern"
 	"github.com/ZxillyFork/gore/extern/gover"
+	"github.com/go-git/go-git/v5/plumbing"
 	"go/ast"
 	"go/format"
 	"go/parser"

@@ -22,17 +22,12 @@ import (
 	"debug/elf"
 	"errors"
 	"fmt"
-	"golang.org/x/exp/mmap"
+	"io"
 	"os"
 )
 
-func openELF(fp string) (*elfFile, error) {
-	osFile, err := mmap.Open(fp)
-	if err != nil {
-		return nil, fmt.Errorf("error when opening the ELF file: %w", err)
-	}
-
-	f, err := elf.NewFile(osFile)
+func openELF(reader io.ReaderAt) (*elfFile, error) {
+	f, err := elf.NewFile(reader)
 	if err != nil {
 		return nil, fmt.Errorf("error when parsing the ELF file: %w", err)
 	}

@@ -23,13 +23,13 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
-	"golang.org/x/exp/mmap"
+	"io"
 	"os"
 	"slices"
 	"sort"
 )
 
-func openPE(fp string) (peF *peFile, err error) {
+func openPE(reader io.ReaderAt) (peF *peFile, err error) {
 	// Parsing by the file by debug/pe can panic if the PE file is malformed.
 	// To prevent a crash, we recover the panic and return it as an error
 	// instead.
@@ -39,13 +39,7 @@ func openPE(fp string) (peF *peFile, err error) {
 		}
 	}()
 
-	osFile, err := mmap.Open(fp)
-	if err != nil {
-		err = fmt.Errorf("error when opening the file: %w", err)
-		return
-	}
-
-	f, err := pe.NewFile(osFile)
+	f, err := pe.NewFile(reader)
 	if err != nil {
 		err = fmt.Errorf("error when parsing the PE file: %w", err)
 		return

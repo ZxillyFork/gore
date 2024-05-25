@@ -23,7 +23,6 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
-	"golang.org/x/exp/mmap"
 	"io"
 	"os"
 	"path"
@@ -47,15 +46,10 @@ var (
 )
 
 // Open opens a file and returns a handler to the file.
-func Open(filePath string) (*GoFile, error) {
-	f, err := mmap.Open(filePath)
-	if err != nil {
-		return nil, err
-	}
-
+func Open(f io.ReaderAt) (*GoFile, error) {
 	buf := make([]byte, maxMagicBufLen)
 	n, err := f.ReadAt(buf, 0)
-	defer f.Close()
+
 	if err != nil {
 		return nil, err
 	}
@@ -64,19 +58,19 @@ func Open(filePath string) (*GoFile, error) {
 	}
 	gofile := new(GoFile)
 	if fileMagicMatch(buf, elfMagic) {
-		elf, err := openELF(filePath)
+		elf, err := openELF(f)
 		if err != nil {
 			return nil, err
 		}
 		gofile.fh = elf
 	} else if fileMagicMatch(buf, peMagic) {
-		pe, err := openPE(filePath)
+		pe, err := openPE(f)
 		if err != nil {
 			return nil, err
 		}
 		gofile.fh = pe
 	} else if fileMagicMatch(buf, machoMagic1) || fileMagicMatch(buf, machoMagic2) || fileMagicMatch(buf, machoMagic3) || fileMagicMatch(buf, machoMagic4) {
-		macho, err := openMachO(filePath)
+		macho, err := openMachO(f)
 		if err != nil {
 			return nil, err
 		}

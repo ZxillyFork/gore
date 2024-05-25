@@ -21,19 +21,14 @@ import (
 	"debug/dwarf"
 	"debug/macho"
 	"fmt"
-	"golang.org/x/exp/mmap"
+	"io"
 	"os"
 	"slices"
 	"sort"
 )
 
-func openMachO(fp string) (*machoFile, error) {
-	osFile, err := mmap.Open(fp)
-	if err != nil {
-		return nil, fmt.Errorf("error when opening the file: %w", err)
-	}
-
-	f, err := macho.NewFile(osFile)
+func openMachO(reader io.ReaderAt) (*machoFile, error) {
+	f, err := macho.NewFile(reader)
 	if err != nil {
 		return nil, fmt.Errorf("error when parsing the Mach-O file: %w", err)
 	}
