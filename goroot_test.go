@@ -53,7 +53,9 @@ func TestExtractGoRoot(t *testing.T) {
 				return
 			}
 			r.NoError(err)
-			f, err := Open(fp)
+			ff, err := os.Open(fp)
+			r.NoError(err)
+			f, err := Open(ff)
 			r.NoError(err)
 			defer f.Close()
 			goroot, err := findGoRootPath(f)
