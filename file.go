@@ -138,6 +138,10 @@ type GoFile struct {
 	initModuleDataError error
 }
 
+func (f *GoFile) GetPCLNTableAddr() uint64 {
+	return f.pclntabAddr
+}
+
 func (f *GoFile) initModuleData() error {
 	f.initModuleDataOnce.Do(func() {
 		err := f.ensureCompilerVersion()
