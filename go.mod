@@ -1,13 +1,13 @@
 module github.com/ZxillyFork/gore
 
-go 1.21
+go 1.22.0
 
 require (
-	github.com/ZxillyFork/gosym v0.0.0-20240502221713-b6e6623d24a9
+	github.com/ZxillyFork/gosym v0.0.0-20240510024817-deed2b882525
 	github.com/blacktop/go-macho v1.1.232
 	github.com/go-git/go-git/v5 v5.11.0
 	github.com/stretchr/testify v1.8.4
-	golang.org/x/arch v0.8.0
+	golang.org/x/arch v0.10.0
 )
 
 require (
@@ -29,10 +29,10 @@ require (
 	github.com/sergi/go-diff v1.3.2-0.20230802210424-5b0b94c5c0d3 // indirect
 	github.com/skeema/knownhosts v1.2.2 // indirect
 	github.com/xanzy/ssh-agent v0.3.3 // indirect
-	golang.org/x/crypto v0.21.0 // indirect
-	golang.org/x/mod v0.12.0 // indirect
-	golang.org/x/net v0.22.0 // indirect
-	golang.org/x/sys v0.18.0 // indirect
+	golang.org/x/crypto v0.27.0 // indirect
+	golang.org/x/mod v0.21.0 // indirect
+	golang.org/x/net v0.29.0 // indirect
+	golang.org/x/sys v0.25.0 // indirect
 	golang.org/x/tools v0.13.0 // indirect
 	gopkg.in/warnings.v0 v0.1.2 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
