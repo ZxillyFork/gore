@@ -5,8 +5,8 @@ go 1.22.0
 require (
 	github.com/ZxillyFork/gosym v0.0.0-20240510024817-deed2b882525
 	github.com/blacktop/go-macho v1.1.232
-	github.com/go-git/go-git/v5 v5.11.0
-	github.com/stretchr/testify v1.8.4
+	github.com/go-git/go-git/v5 v5.12.0
+	github.com/stretchr/testify v1.9.0
 	golang.org/x/arch v0.10.0
 )
 
