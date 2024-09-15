@@ -440,13 +440,7 @@ func (f *GoFile) PCLNTab() (*gosym.Table, error) {
 }
 
 func (f *GoFile) findRuntimeTextMachoChainedFixups(pclntabAddr uint64) (uint64, error) {
-	of := f.fh.getFile()
-	_, err := of.Seek(0, io.SeekStart)
-	if err != nil {
-		return 0, err
-	}
-
-	f2, err := macho2.NewFile(of)
+	f2, err := macho2.NewFile(f.fh.(*machoFile).reader)
 	if err != nil {
 		return 0, err
 	}

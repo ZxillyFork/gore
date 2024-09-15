@@ -32,7 +32,7 @@ func openMachO(reader io.ReaderAt) (*machoFile, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error when parsing the Mach-O file: %w", err)
 	}
-	return &machoFile{file: f, symtab: newSymbolTableOnce()}, nil
+	return &machoFile{file: f, reader: reader, symtab: newSymbolTableOnce()}, nil
 }
 
 var _ fileHandler = (*machoFile)(nil)
@@ -40,6 +40,7 @@ var _ fileHandler = (*machoFile)(nil)
 type machoFile struct {
 	file   *macho.File
 	osFile *os.File
+	reader io.ReaderAt
 	symtab *symbolTableOnce
 }
 
