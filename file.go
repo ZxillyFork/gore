@@ -20,7 +20,6 @@ package gore
 import (
 	"bytes"
 	"debug/dwarf"
-	"debug/gosym"
 	"encoding/binary"
 	"errors"
 	"fmt"
@@ -30,6 +29,7 @@ import (
 	"sort"
 	"sync"
 
+	"github.com/ZxillyFork/gosym"
 	"github.com/blacktop/go-macho"
 	"github.com/blacktop/go-macho/pkg/fixupchains"
 )
@@ -148,6 +148,10 @@ type GoFile struct {
 
 	initModuleDataOnce  sync.Once
 	initModuleDataError error
+}
+
+func (f *GoFile) GetPCLNTableAddr() uint64 {
+	return f.pclntabAddr
 }
 
 func (f *GoFile) initModuleData() error {
@@ -320,6 +324,7 @@ func (f *GoFile) enumPackages() error {
 					Offset:      n.Entry,
 					End:         n.End,
 					PackageName: n.PackageName(),
+					Func:        &n,
 				},
 				Receiver: n.ReceiverName(),
 			}
@@ -331,6 +336,7 @@ func (f *GoFile) enumPackages() error {
 				Offset:      n.Entry,
 				End:         n.End,
 				PackageName: n.PackageName(),
+				Func:        &n,
 			}
 			p.Functions = append(p.Functions, f)
 		}

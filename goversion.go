@@ -26,8 +26,8 @@ import (
 
 	"golang.org/x/arch/x86/x86asm"
 
-	"github.com/goretk/gore/extern"
-	"github.com/goretk/gore/extern/gover"
+	"github.com/ZxillyFork/gore/extern"
+	"github.com/ZxillyFork/gore/extern/gover"
 )
 
 var goVersionMatcher = regexp.MustCompile(`(go[\d+.]*(beta|rc)?[\d*])`)

@@ -27,8 +27,8 @@ import (
 	"io"
 	"strconv"
 
-	"github.com/goretk/gore/extern"
-	"github.com/goretk/gore/extern/gover"
+	"github.com/ZxillyFork/gore/extern"
+	"github.com/ZxillyFork/gore/extern/gover"
 )
 
 // Moduledata holds information about the layout of the executable image in memory.

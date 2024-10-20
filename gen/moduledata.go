@@ -20,9 +20,6 @@ package main
 import (
 	"bytes"
 	"fmt"
-	"github.com/go-git/go-git/v5/plumbing"
-	"github.com/goretk/gore/extern"
-	"github.com/goretk/gore/extern/gover"
 	"go/ast"
 	"go/format"
 	"go/parser"
@@ -32,6 +29,11 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+
+	"github.com/go-git/go-git/v5/plumbing"
+
+	"github.com/ZxillyFork/gore/extern"
+	"github.com/ZxillyFork/gore/extern/gover"
 )
 
 func getMaxVersionBit() (int, error) {
