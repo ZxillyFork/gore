@@ -22,6 +22,8 @@ type Function struct {
 	End uint64 `json:"end"`
 	// PackageName is the name of the Go package the function belongs to.
 	PackageName string `json:"packageName"`
+
+	Func *gosym.Func
 }
 
 // String returns a string representation of the function.
@@ -70,9 +72,11 @@ type SourceFile struct {
 
 // String produces a string representation of a source code file.
 // The multi-line string has this format:
-//		File: simple.go
-//			main Lines: 5 to 8 (3)
-//			setup Lines: 9 to 11 (2)
+//
+//	File: simple.go
+//		main Lines: 5 to 8 (3)
+//		setup Lines: 9 to 11 (2)
+//
 // The prefix and postfix string is added to each line.
 func (s *SourceFile) String() string {
 	sort.Slice(s.entries, func(i, j int) bool {

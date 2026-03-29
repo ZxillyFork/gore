@@ -143,6 +143,10 @@ type GoFile struct {
 	initModuleDataError error
 }
 
+func (f *GoFile) GetPCLNTableAddr() uint64 {
+	return f.pclntabAddr
+}
+
 func (f *GoFile) initModuleData() error {
 	f.initModuleDataOnce.Do(func() {
 		err := f.ensureCompilerVersion()
@@ -304,6 +308,7 @@ func (f *GoFile) enumPackages() error {
 					Offset:      n.Entry,
 					End:         n.End,
 					PackageName: n.PackageName(),
+					Func:        &n,
 				},
 				Receiver: n.ReceiverName(),
 			}
@@ -315,6 +320,7 @@ func (f *GoFile) enumPackages() error {
 				Offset:      n.Entry,
 				End:         n.End,
 				PackageName: n.PackageName(),
+				Func:        &n,
 			}
 			p.Functions = append(p.Functions, f)
 		}
