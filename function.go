@@ -5,10 +5,11 @@
 package gore
 
 import (
-	"debug/gosym"
 	"fmt"
 	"sort"
 	"strings"
+
+	"github.com/ZxillyFork/gosym"
 )
 
 // Function is a representation of a Go function.

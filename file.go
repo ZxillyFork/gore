@@ -7,7 +7,6 @@ package gore
 import (
 	"bytes"
 	"debug/dwarf"
-	"debug/gosym"
 	"encoding/binary"
 	"errors"
 	"fmt"
@@ -17,6 +16,7 @@ import (
 	"sort"
 	"sync"
 
+	"github.com/ZxillyFork/gosym"
 	"github.com/blacktop/go-macho"
 )
 
