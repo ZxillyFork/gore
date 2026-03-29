@@ -256,18 +256,18 @@ func (c *ModPackageClassifier) Classify(pkg *Package) PackageClass {
 	}
 
 	// If the build info path is not an empty string and the package has the path as a substring, it is part of the main module.
-	if c.modInfo.Path != "" && (strings.HasPrefix(pkg.Filepath, c.modInfo.Path) || strings.HasPrefix(pkg.Name, c.modInfo.Path)) {
+	if c.modInfo.Path != "" && (strings.Contains(pkg.Filepath, c.modInfo.Path) || strings.HasPrefix(pkg.Name, c.modInfo.Path)) {
 		return ClassMain
 	}
 
 	// If the main module path is not an empty string and the package has the path as a substring, it is part of the main module.
-	if c.modInfo.Main.Path != "" && (strings.HasPrefix(pkg.Filepath, c.modInfo.Main.Path) || strings.HasPrefix(pkg.Name, c.modInfo.Main.Path)) {
+	if c.modInfo.Main.Path != "" && (strings.Contains(pkg.Filepath, c.modInfo.Main.Path) || strings.HasPrefix(pkg.Name, c.modInfo.Main.Path)) {
 		return ClassMain
 	}
 
 	// Check if the package is a direct dependency.
 	for _, dep := range c.modInfo.Deps {
-		if strings.HasPrefix(pkg.Filepath, dep.Path) || strings.HasPrefix(pkg.Name, dep.Path) {
+		if strings.Contains(pkg.Filepath, dep.Path) || strings.HasPrefix(pkg.Name, dep.Path) {
 			// If the vendor it matched on has the version of "(devel)", it is treated as part of
 			// the main module.
 			if dep.Version == "(devel)" {
