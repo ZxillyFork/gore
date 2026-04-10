@@ -34,6 +34,14 @@ type Moduledata interface {
 	PCLNTab() ModuleDataSection
 	// FuncTab returns the functab section.
 	FuncTab() ModuleDataSection
+	// Funcnametab returns the funcnametab section (Go 1.16+).
+	Funcnametab() ModuleDataSection
+	// Cutab returns the cutab section (Go 1.16+).
+	Cutab() ModuleDataSection
+	// Filetab returns the filetab section (Go 1.16+).
+	Filetab() ModuleDataSection
+	// Pctab returns the pctab section (Go 1.16+).
+	Pctab() ModuleDataSection
 	// ITabLinks returns the itablinks section.
 	ITabLinks() ModuleDataSection
 	// TypeLink returns the typelink section.
@@ -61,8 +69,14 @@ type moduledata struct {
 	TypelinkAddr, TypelinkLen uint64
 	ITabLinkAddr, ITabLinkLen uint64
 	ITabOffset, ITabSize      uint64
-	FuncTabAddr, FuncTabLen   uint64
-	PCLNTabAddr, PCLNTabLen   uint64
+
+	FuncnametabAddr, FuncnametabLen uint64
+	CutabAddr, CutabLen             uint64
+	FiletabAddr, FiletabLen         uint64
+	PctabAddr, PctabLen             uint64
+
+	FuncTabAddr, FuncTabLen uint64
+	PCLNTabAddr, PCLNTabLen uint64
 
 	GoFuncVal uint64
 
@@ -139,6 +153,42 @@ func (m moduledata) FuncTab() ModuleDataSection {
 	return ModuleDataSection{
 		Address: m.FuncTabAddr,
 		Length:  m.FuncTabLen,
+		fh:      m.fh,
+	}
+}
+
+// Funcnametab returns the funcnametab section (Go 1.16+).
+func (m moduledata) Funcnametab() ModuleDataSection {
+	return ModuleDataSection{
+		Address: m.FuncnametabAddr,
+		Length:  m.FuncnametabLen,
+		fh:      m.fh,
+	}
+}
+
+// Cutab returns the cutab section (Go 1.16+).
+func (m moduledata) Cutab() ModuleDataSection {
+	return ModuleDataSection{
+		Address: m.CutabAddr,
+		Length:  m.CutabLen,
+		fh:      m.fh,
+	}
+}
+
+// Filetab returns the filetab section (Go 1.16+).
+func (m moduledata) Filetab() ModuleDataSection {
+	return ModuleDataSection{
+		Address: m.FiletabAddr,
+		Length:  m.FiletabLen,
+		fh:      m.fh,
+	}
+}
+
+// Pctab returns the pctab section (Go 1.16+).
+func (m moduledata) Pctab() ModuleDataSection {
+	return ModuleDataSection{
+		Address: m.PctabAddr,
+		Length:  m.PctabLen,
 		fh:      m.fh,
 	}
 }

@@ -346,6 +346,26 @@ func (g *moduleDataGenerator) writeVersionedModuleData(versionCode int, code str
 			g.writeln("ITabSize: %s,", g.wrapValue("md.Itabsize", bits))
 		}
 
+		if exist("funcnametab") {
+			g.writeln("FuncnametabAddr: %s,", g.wrapValue("md.Funcnametab", bits))
+			g.writeln("FuncnametabLen: %s,", g.wrapValue("md.Funcnametablen", bits))
+		}
+
+		if exist("cutab") {
+			g.writeln("CutabAddr: %s,", g.wrapValue("md.Cutab", bits))
+			g.writeln("CutabLen: %s,", g.wrapValue("md.Cutablen", bits))
+		}
+
+		if exist("filetab") {
+			g.writeln("FiletabAddr: %s,", g.wrapValue("md.Filetab", bits))
+			g.writeln("FiletabLen: %s,", g.wrapValue("md.Filetablen", bits))
+		}
+
+		if exist("pctab") {
+			g.writeln("PctabAddr: %s,", g.wrapValue("md.Pctab", bits))
+			g.writeln("PctabLen: %s,", g.wrapValue("md.Pctablen", bits))
+		}
+
 		if exist("ftab") {
 			g.writeln("FuncTabAddr: %s,", g.wrapValue("md.Ftab", bits))
 			g.writeln("FuncTabLen: %s,", g.wrapValue("md.Ftablen", bits))
