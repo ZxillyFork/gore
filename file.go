@@ -137,6 +137,11 @@ type GoFile struct {
 
 	moduledata moduledata
 
+	// typeSharedAux caches TypeAuxRanges without a specific owner (e.g.
+	// package-path strings referenced by multiple types). Populated by the
+	// most recent GetTypes call.
+	typeSharedAux []TypeAuxRange
+
 	versionError error
 
 	initModuleDataOnce  sync.Once
@@ -545,14 +550,36 @@ func (f *GoFile) GetTypes() ([]*GoType, error) {
 	}
 	md := f.moduledata
 
-	t, err := getTypes(f.FileInfo, f.fh, md)
+	t, shared, err := getTypes(f.FileInfo, f.fh, md)
 	if err != nil {
 		return nil, err
 	}
+	f.typeSharedAux = shared
 	if err = f.initPackages(); err != nil {
 		return nil, err
 	}
 	return sortTypes(t), nil
+}
+
+// GetTypeAuxRanges returns every byte span referenced by a parsed type but
+// stored outside its linear [Addr, Addr+FlatSize) region: name strings,
+// package paths, method/field/imethod arrays and funcType argument pointers.
+//
+// GetTypes must be called first; otherwise the result is empty. Ranges are
+// sorted by Addr. Shared spans (e.g. package paths referenced by many types)
+// appear once with Owner == nil.
+func (f *GoFile) GetTypeAuxRanges() ([]TypeAuxRange, error) {
+	types, err := f.GetTypes()
+	if err != nil {
+		return nil, err
+	}
+	var out []TypeAuxRange
+	for _, t := range types {
+		out = append(out, t.AuxRanges...)
+	}
+	out = append(out, f.typeSharedAux...)
+	sort.Slice(out, func(i, j int) bool { return out[i].Addr < out[j].Addr })
+	return out, nil
 }
 
 // Bytes return a slice of raw bytes with the length in the file from the address.

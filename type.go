@@ -37,6 +37,39 @@ const (
 	_typeFieldEnd
 )
 
+// TypeAuxKind marks the category of a TypeAuxRange.
+type TypeAuxKind uint8
+
+const (
+	// AuxName is a rtype/field/method/imethod name string (flag+varint+utf8).
+	AuxName TypeAuxKind = iota
+	// AuxTag is the tag bytes (varint+utf8) that follow a struct field name.
+	AuxTag
+	// AuxPkgPath is a package-path name string referenced from struct/interface/uncommon types.
+	AuxPkgPath
+	// AuxMethods is the contiguous method[] array of an uncommon type.
+	AuxMethods
+	// AuxFields is the contiguous structField[] array of a struct type.
+	AuxFields
+	// AuxIMethods is the contiguous imethod[] array of an interface type.
+	AuxIMethods
+	// AuxFuncArgs is the contiguous *rtype pointer array following a funcType.
+	AuxFuncArgs
+)
+
+// TypeAuxRange describes a byte span associated with a GoType but stored
+// outside the linear [Addr, Addr+FlatSize) region of the rtype descriptor.
+//
+// Typical examples: the type's name string, its method/field/imethod arrays
+// and the names/tags those arrays reference. Shared package-path strings
+// have Owner == nil because several types may reference the same bytes.
+type TypeAuxRange struct {
+	Addr  uint64
+	Size  uint64
+	Kind  TypeAuxKind
+	Owner *GoType
+}
+
 // ChanDir is a channel direction.
 type ChanDir int
 
@@ -49,14 +82,15 @@ const (
 	ChanBoth = ChanRecv | ChanSend
 )
 
-func getTypes(fileInfo *FileInfo, f fileHandler, md moduledata) (map[uint64]*GoType, error) {
+func getTypes(fileInfo *FileInfo, f fileHandler, md moduledata) (map[uint64]*GoType, []TypeAuxRange, error) {
 	if GoVersionCompare(fileInfo.goversion.Name, "go1.7beta1") < 0 {
-		return getLegacyTypes(fileInfo, f, md)
+		t, err := getLegacyTypes(fileInfo, f, md)
+		return t, nil, err
 	}
 
 	types, err := md.Types().Data()
 	if err != nil {
-		return nil, fmt.Errorf("failed to get types data section: %w", err)
+		return nil, nil, fmt.Errorf("failed to get types data section: %w", err)
 	}
 
 	// New parser
@@ -65,17 +99,17 @@ func getTypes(fileInfo *FileInfo, f fileHandler, md moduledata) (map[uint64]*GoT
 	parser := newTypeParser(types, typesAddr, fileInfo, f, resolver)
 	if usesGo127TypeLayout(fileInfo.goversion.Name) {
 		if md.TypeDescLen == 0 {
-			return nil, errors.New("Go 1.27 moduledata has no type descriptor region")
+			return nil, nil, errors.New("Go 1.27 moduledata has no type descriptor region")
 		}
 		if _, err := parseTypeDescriptors(parser, md.TypeDescLen); err != nil {
-			return nil, fmt.Errorf("failed to parse type descriptors: %w", err)
+			return nil, nil, fmt.Errorf("failed to parse type descriptors: %w", err)
 		}
-		return parser.parsedTypes(), nil
+		return parser.parsedTypes(), parser.sharedAux, nil
 	}
 
 	typeLink, err := md.TypeLinkData()
 	if err != nil {
-		return nil, fmt.Errorf("failed to get type link data: %w", err)
+		return nil, nil, fmt.Errorf("failed to get type link data: %w", err)
 	}
 	for _, off := range typeLink {
 		_, err := parser.parseType(uint64(off) + typesAddr)
@@ -83,7 +117,7 @@ func getTypes(fileInfo *FileInfo, f fileHandler, md moduledata) (map[uint64]*GoT
 			continue
 		}
 	}
-	return parser.parsedTypes(), nil
+	return parser.parsedTypes(), parser.sharedAux, nil
 }
 
 func parseTypeDescriptors(parser *typeParser, descriptorLen uint64) ([]int32, error) {
@@ -182,7 +216,18 @@ type GoType struct {
 	// IsVariadic is true if the last argument type is variadic. For example "func(s string, n ...int)"
 	IsVariadic bool
 	// Methods holds information of the types methods.
-	Methods        []*TypeMethod
+	Methods []*TypeMethod
+	// FlatSize is the number of bytes the rtype descriptor occupies linearly
+	// starting at Addr: rtype header + kind-specific payload + uncommonType
+	// (when present) + the *rtype pointer array that follows a funcType.
+	//
+	// It does NOT include bytes reachable via indirect pointers such as the
+	// name string, package-path string, method[] / structField[] / imethod[]
+	// arrays or GC bitmap. Those are reported via AuxRanges instead.
+	FlatSize uint64
+	// AuxRanges lists byte spans that belong to this type but are stored
+	// outside [Addr, Addr+FlatSize). See TypeAuxRange for details.
+	AuxRanges      []TypeAuxRange
 	flag           uint8
 	descriptorSize uint64
 }

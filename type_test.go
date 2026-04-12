@@ -141,6 +141,57 @@ func TestGetTypes(t *testing.T) {
 	}
 }
 
+func TestTypeAuxRanges(t *testing.T) {
+	goldFiles, err := getGoldenResources()
+	if err != nil || len(goldFiles) == 0 {
+		t.Skip("No golden files")
+	}
+	for _, test := range goldFiles {
+		t.Run(test, func(t *testing.T) {
+			r := require.New(t)
+			a := assert.New(t)
+
+			fp, err := getTestResourcePath("gold/" + test)
+			r.NoError(err)
+			if _, err = os.Stat(fp); os.IsNotExist(err) {
+				return
+			}
+			f, err := Open(fp)
+			r.NoError(err)
+			defer f.Close()
+
+			// Only exercise the modern parser path; legacy (<1.7) does not
+			// populate FlatSize/AuxRanges.
+			if f.FileInfo == nil || f.FileInfo.goversion == nil ||
+				GoVersionCompare(f.FileInfo.goversion.Name, "go1.7beta1") < 0 {
+				t.Skip("legacy parser or no goversion")
+			}
+
+			typs, err := f.GetTypes()
+			r.NoError(err)
+
+			// Every parsed type should have a non-zero FlatSize (at least
+			// the rtype header bytes).
+			zeroFlat := 0
+			for _, typ := range typs {
+				if typ.FlatSize == 0 {
+					zeroFlat++
+				}
+			}
+			a.Zero(zeroFlat, "every parsed type should have FlatSize > 0")
+
+			// GetTypeAuxRanges should surface at least the name strings.
+			aux, err := f.GetTypeAuxRanges()
+			r.NoError(err)
+			a.NotEmpty(aux, "expected at least one aux range")
+			// Ranges should be sorted by Addr.
+			for i := 1; i < len(aux); i++ {
+				a.LessOrEqual(aux[i-1].Addr, aux[i].Addr, "aux not sorted")
+			}
+		})
+	}
+}
+
 func TestGoTypeStringer(t *testing.T) {
 	assert := assert.New(t)
 	tests := []struct {

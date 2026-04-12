@@ -28,6 +28,7 @@ func newTypeParser(typesData []byte, baseAddres uint64, fi *FileInfo, fh fileHan
 		order:     fi.ByteOrder,
 		wordsize:  fi.WordSize,
 		cache:     make(map[uint64]*GoType),
+		seenName:  make(map[uint64]struct{}),
 		typesData: typesData,
 		r:         bytes.NewReader(typesData),
 		fh:        fh,
@@ -154,6 +155,96 @@ type typeParser struct {
 	parseUint            readUintFunc
 	parseUncommon        uncommonTypeParseFunc
 	parseNameLen         nameLenParseFunc
+
+	// sharedAux holds TypeAuxRanges with no single owner — typically
+	// package-path strings that are referenced by multiple types.
+	sharedAux []TypeAuxRange
+	// seenName records name offsets (relative to typesData) already recorded
+	// as an AuxRange so the same bytes are not double-counted.
+	seenName map[uint64]struct{}
+}
+
+// nameSpan returns (name, totalBytes, tagBytes). totalBytes is the full
+// length of the name record at ptr: 1 flag byte + varint length + name
+// bytes. tagBytes is the extra varint+tag payload if a tag follows (only
+// relevant for struct field names), otherwise 0.
+func (p *typeParser) nameSpan(ptr uint64, flags uint8) (string, int, int) {
+	if ptr+1 >= uint64(len(p.typesData)) {
+		return "", 0, 0
+	}
+	i, l := p.parseNameLen(p, ptr+1)
+	if l == 0 {
+		return "", 0, 0
+	}
+	start := ptr + 1 + uint64(l)
+	end := start + i
+	if end > uint64(len(p.typesData)) || start > end {
+		return "", 0, 0
+	}
+	name := string(p.typesData[start:end])
+	nameLen := int(i)
+	if nameLen == 0 {
+		return "", 0, 0
+	}
+
+	total := 1 + l + nameLen
+
+	tagBytes := 0
+	if p.hasTag(ptr) {
+		tl, tll := p.parseNameLen(p, end)
+		if tll != 0 && tl != 0 && end+uint64(tll)+tl <= uint64(len(p.typesData)) {
+			tagBytes = tll + int(tl)
+		}
+	}
+
+	if flags&tflagExtraStar != 0 {
+		name = name[1:]
+	}
+	return name, total, tagBytes
+}
+
+// recordAux appends an AuxRange to the owner's list (or to sharedAux when
+// owner is nil). Zero-sized ranges are dropped.
+func (p *typeParser) recordAux(owner *GoType, addr, size uint64, kind TypeAuxKind) {
+	if size == 0 {
+		return
+	}
+	r := TypeAuxRange{Addr: addr, Size: size, Kind: kind, Owner: owner}
+	if owner != nil {
+		owner.AuxRanges = append(owner.AuxRanges, r)
+	} else {
+		p.sharedAux = append(p.sharedAux, r)
+	}
+}
+
+// recordName records an AuxName range at ptr, deduplicating by ptr so shared
+// strings are only counted once.
+func (p *typeParser) recordName(owner *GoType, ptr uint64, nameBytes int) {
+	if nameBytes <= 0 {
+		return
+	}
+	if _, ok := p.seenName[ptr]; ok {
+		return
+	}
+	p.seenName[ptr] = struct{}{}
+	p.recordAux(owner, p.base+ptr, uint64(nameBytes), AuxName)
+}
+
+// recordPkgPath resolves the name at ptr, returns it, and records it as a
+// shared AuxPkgPath span (deduped via seenName).
+func (p *typeParser) recordPkgPath(ptr uint64) string {
+	if ptr >= uint64(len(p.typesData)) {
+		return ""
+	}
+	name, total, _ := p.nameSpan(ptr, 0)
+	if total <= 0 {
+		return name
+	}
+	if _, seen := p.seenName[ptr]; !seen {
+		p.seenName[ptr] = struct{}{}
+		p.recordAux(nil, p.base+ptr, uint64(total), AuxPkgPath)
+	}
+	return name
 }
 
 func (p *typeParser) hasTag(off uint64) bool {
@@ -161,28 +252,6 @@ func (p *typeParser) hasTag(off uint64) bool {
 		return false
 	}
 	return p.typesData[off]&(1<<1) != 0
-}
-
-func (p *typeParser) resolveName(ptr uint64, flags uint8) (string, int) {
-	if ptr+1 >= uint64(len(p.typesData)) {
-		return "", 0
-	}
-	i, l := p.parseNameLen(p, ptr+1)
-	end := ptr + 1 + uint64(l) + i
-	start := ptr + 1 + uint64(l)
-	if end > uint64(len(p.typesData)) || start > end {
-		return "", 0
-	}
-	name := string(p.typesData[start:end])
-	nl := int(i)
-	if nl == 0 {
-		return "", 0
-	}
-	if flags&tflagExtraStar != 0 {
-		// typ.Name = strData[1:]
-		return name[1:], nl - 1
-	}
-	return name, nl
 }
 
 func (p *typeParser) resolveTag(o uint64) string {
@@ -291,7 +360,12 @@ func (p *typeParser) parseType(address uint64) (*GoType, error) {
 	p.cache[address] = typ
 
 	// Resolve name of the type.
-	typ.Name, _ = p.resolveName(uint64(rtype.Str), typ.flag)
+	{
+		ptr := uint64(rtype.Str)
+		name, total, _ := p.nameSpan(ptr, typ.flag)
+		typ.Name = name
+		p.recordName(typ, ptr, total)
+	}
 
 	/*
 		Parsing of "kind" fields.
@@ -342,7 +416,6 @@ func (p *typeParser) parseType(address uint64) (*GoType, error) {
 
 		out := ftype.OutCount & (1<<15 - 1)
 		typ.FuncReturnVals = make([]*GoType, out)
-		descriptorExtra += (ftype.InCount + out) * uint64(p.wordsize)
 
 	case reflect.Interface:
 		iface, c, err := p.parseInterface(p)
@@ -352,7 +425,7 @@ func (p *typeParser) parseType(address uint64) (*GoType, error) {
 		count += c
 
 		if iface.PkgPath != 0 {
-			typ.PackagePath, _ = p.resolveName(iface.PkgPath-p.base, 0)
+			typ.PackagePath = p.recordPkgPath(iface.PkgPath - p.base)
 		}
 
 		if iface.MethodsLen > 0 {
@@ -404,7 +477,7 @@ func (p *typeParser) parseType(address uint64) (*GoType, error) {
 
 		// Resolve package path.
 		if s.PkgPath > uint64(p.base) {
-			typ.PackagePath, _ = p.resolveName(s.PkgPath-uint64(p.base), 0)
+			typ.PackagePath = p.recordPkgPath(s.PkgPath - uint64(p.base))
 		}
 	}
 
@@ -430,16 +503,15 @@ func (p *typeParser) parseType(address uint64) (*GoType, error) {
 		}
 		count += c
 
+		if uc.PkgPath != 0 {
+			pkg := p.recordPkgPath(uint64(uc.PkgPath))
+			if typ.PackagePath == "" {
+				typ.PackagePath = pkg
+			}
+		}
+
 		if uc.Mcount != 0 {
 			descriptorExtra += uint64(uc.Mcount) * uint64(binary.Size(method{}))
-
-			// When typ.Kind is reflect.Ptr, PackagePath is not parsed, so read
-			// PkgPath from uncommonType as typ's PackagePath
-			if typ.Kind == reflect.Ptr && len(typ.PackagePath) == 0 {
-				// Resolve package path.
-				typ.PackagePath, _ = p.resolveName(uint64(uc.PkgPath), 0)
-			}
-
 			// We have some methods that needs to be parsed. From source code
 			// comments the Moff attribute is the offset from the beginning of
 			// the uncommon data structure to where the array of methods start.
@@ -473,6 +545,13 @@ func (p *typeParser) parseType(address uint64) (*GoType, error) {
 		// values the function has since the slices in the typ object has
 		// been created with the correct size.
 		child = uint64(address) + uint64(count)
+
+		// funcType is followed by an [InCount+OutCount]*rtype array.
+		if argCount := uint64(len(typ.FuncArgs) + len(typ.FuncReturnVals)); argCount > 0 {
+			argBytes := argCount * uint64(p.wordsize)
+			p.recordAux(typ, child, argBytes, AuxFuncArgs)
+			count += int(argBytes)
+		}
 	}
 
 	typ.descriptorSize = uint64(count) + descriptorExtra
@@ -506,7 +585,9 @@ func (p *typeParser) parseType(address uint64) (*GoType, error) {
 				return nil, fmt.Errorf("method name for type at 0x%x has an invalid address (0x%x)", address, m.Name)
 			}
 
-			nm, _ := p.resolveName(uint64(m.Name), 0)
+			mnPtr := uint64(m.Name)
+			nm, nmTotal, _ := p.nameSpan(mnPtr, 0)
+			p.recordName(typ, mnPtr, nmTotal)
 
 			// With the release of Go 1.16 (commit: https://github.com/golang/go/commit/0ab72ed020d0c320b5007987abdf40677db34cfc)
 			// a sentinel value of -1 is used for unreachable code. This code has been removed by the compiler because it has
@@ -541,6 +622,7 @@ func (p *typeParser) parseType(address uint64) (*GoType, error) {
 				FuncCallOffset:  uint64(m.Tfn),
 			}
 		}
+		p.recordAux(typ, p.base+methodStart, n, AuxMethods)
 	}
 
 	// Handle child types.
@@ -595,6 +677,7 @@ func (p *typeParser) parseType(address uint64) (*GoType, error) {
 			}
 
 		case reflect.Interface:
+			imStart := child
 			for i := 0; i < len(typ.Methods); i++ {
 				err = p.seekFromStart(child - p.base + n)
 				if err != nil {
@@ -612,13 +695,16 @@ func (p *typeParser) parseType(address uint64) (*GoType, error) {
 					return nil, fmt.Errorf("failed to parse imethod type %d for type located at 0x%x: %w", i+1, address, err)
 				}
 
-				name, _ := p.resolveName(uint64(meth.Name), 0)
+				imnPtr := uint64(meth.Name)
+				name, nmTotal, _ := p.nameSpan(imnPtr, 0)
+				p.recordName(typ, imnPtr, nmTotal)
 
 				typ.Methods[i] = &TypeMethod{
 					Name: name,
 					Type: t,
 				}
 			}
+			p.recordAux(typ, imStart, n, AuxIMethods)
 
 		case reflect.Map:
 			el, err := p.parseType(child)
@@ -635,6 +721,7 @@ func (p *typeParser) parseType(address uint64) (*GoType, error) {
 
 		case reflect.Struct:
 			// Parse the data for each struct field.
+			sfStart := child
 			for i := 0; i < len(typ.Fields); i++ {
 				err = p.seekFromStart(child - p.base + n)
 				if err != nil {
@@ -658,11 +745,14 @@ func (p *typeParser) parseType(address uint64) (*GoType, error) {
 				// over and over again.
 				field := *gt
 
-				name, nl := p.resolveName(sf.Name-p.base, 0)
+				sfnPtr := sf.Name - p.base
+				name, nmTotal, tagBytes := p.nameSpan(sfnPtr, 0)
 				field.FieldName = name
+				p.recordName(typ, sfnPtr, nmTotal)
 
-				if nl != 0 {
-					field.FieldTag = p.resolveTag(sf.Name - p.base)
+				if nmTotal != 0 && tagBytes > 0 {
+					field.FieldTag = p.resolveTag(sfnPtr)
+					p.recordAux(typ, p.base+sfnPtr+uint64(nmTotal), uint64(tagBytes), AuxTag)
 				}
 
 				// In the commit https://github.com/golang/go/commit/e1e66a03a6bb3210034b640923fa253d7def1a26 the encoding for
@@ -679,8 +769,11 @@ func (p *typeParser) parseType(address uint64) (*GoType, error) {
 
 				typ.Fields[i] = &field
 			}
+			p.recordAux(typ, sfStart, n, AuxFields)
 		}
 	}
+
+	typ.FlatSize = uint64(count)
 
 	return typ, nil
 }
