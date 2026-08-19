@@ -4,7 +4,6 @@ go 1.26.1
 
 require (
 	github.com/ZxillyFork/gosym v0.0.0-20240510024817-deed2b882525
-	github.com/ZxillyFork/wazero v0.0.0-20250510195821-bc4cfe6ec57d
 	github.com/blacktop/go-macho v1.1.257
 	github.com/eliben/watgo v0.8.0
 	github.com/go-git/go-git/v5 v5.19.2
