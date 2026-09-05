@@ -104,6 +104,9 @@ func getTypes(fileInfo *FileInfo, f fileHandler, md moduledata) (map[uint64]*GoT
 		if _, err := parseTypeDescriptors(parser, md.TypeDescLen); err != nil {
 			return nil, nil, fmt.Errorf("failed to parse type descriptors: %w", err)
 		}
+		if _, err := md.go127ITabLinks(parser); err != nil {
+			return nil, nil, fmt.Errorf("failed to parse interface tables: %w", err)
+		}
 		return parser.parsedTypes(), parser.sharedAux, nil
 	}
 
